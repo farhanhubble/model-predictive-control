@@ -98,6 +98,24 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
+          
+          // Fit a polynomial to the waypoints.
+          Eigen::VectorXd xs(ptsx.size());
+          Eigen::VectorXd ys(ptsy.size());
+          Eigen::VectorXd reference_trajectory_spline = polyfit(xs,ys,3);
+
+          // Find current cross track error CTE. 
+          double cte = polyeval(reference_trajectory_spline,px) - py;
+          
+          // Find current heading error which is the difference of tangent 
+          // direction at current position and the current heading. The 
+          // tangent (derivative) to the reference trajectory is evaluated
+          // using x = 0 all but the constant term in the quadratic are zero.
+          double heading_err = psi - atan(reference_trajectory_spline[1]);
+
+
+          Eigen::VectorXd state(5);
+          state << px, py, psi, v;
           double steer_value;
           double throttle_value;
 
