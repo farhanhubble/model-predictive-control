@@ -5,9 +5,9 @@
 #include <thread>
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
-#include "Eigen-3.3/Eigen/QR"
 #include "MPC.h"
 #include "json.hpp"
+#include "utils.h"
 
 // for convenience
 using json = nlohmann::json;
@@ -32,38 +32,7 @@ string hasData(string s) {
   return "";
 }
 
-// Evaluate a polynomial.
-double polyeval(Eigen::VectorXd coeffs, double x) {
-  double result = 0.0;
-  for (int i = 0; i < coeffs.size(); i++) {
-    result += coeffs[i] * pow(x, i);
-  }
-  return result;
-}
 
-// Fit a polynomial.
-// Adapted from
-// https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
-Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
-                        int order) {
-  assert(xvals.size() == yvals.size());
-  assert(order >= 1 && order <= xvals.size() - 1);
-  Eigen::MatrixXd A(xvals.size(), order + 1);
-
-  for (int i = 0; i < xvals.size(); i++) {
-    A(i, 0) = 1.0;
-  }
-
-  for (int j = 0; j < xvals.size(); j++) {
-    for (int i = 0; i < order; i++) {
-      A(j, i + 1) = A(j, i) * xvals(j);
-    }
-  }
-
-  auto Q = A.householderQr();
-  auto result = Q.solve(yvals);
-  return result;
-}
 
 int main() {
   uWS::Hub h;
@@ -102,22 +71,24 @@ int main() {
           // Fit a polynomial to the waypoints.
           Eigen::VectorXd xs(ptsx.size());
           Eigen::VectorXd ys(ptsy.size());
-          Eigen::VectorXd reference_trajectory_spline = polyfit(xs,ys,3);
+          Eigen::VectorXd reference_curve = polyfit(xs,ys,3);
 
           // Find current cross track error CTE. 
-          double cte = polyeval(reference_trajectory_spline,px) - py;
+          double ct_err = polyeval(reference_curve,px) - py;
           
           // Find current heading error which is the difference of tangent 
           // direction at current position and the current heading. The 
           // tangent (derivative) to the reference trajectory is evaluated
           // using x = 0 all but the constant term in the quadratic are zero.
-          double heading_err = psi - atan(reference_trajectory_spline[1]);
+          double psi_err = psi - atan(find_slope(reference_curve,px));
 
 
-          Eigen::VectorXd state(5);
-          state << px, py, psi, v;
-          double steer_value;
-          double throttle_value;
+          Eigen::VectorXd state(6);
+          state << px, py, psi, v, ct_err, psi_err;
+          auto vars = mpc.Solve(state,reference_curve);
+          
+          double steer_value =  vars[0];
+          double throttle_value = vars[1];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
