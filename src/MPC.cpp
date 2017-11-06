@@ -6,6 +6,25 @@
 
 using CppAD::AD;
 
+AD<double> polyeval_AD(Eigen::VectorXd coeffs, AD<double> x){
+  AD<double> result = 0;
+  for (int i = 0; i < coeffs.size(); i++) {
+    result += coeffs[i] * pow(x, i);
+  }
+  return result;
+}
+
+
+AD<double>  find_slope_AD(Eigen::VectorXd curve, AD<double>  x){
+  Eigen::VectorXd coeff_derivative(curve.size()-1);
+  for(int i =0; i<coeff_derivative.size(); i++){
+    coeff_derivative(i) = (i+1)*curve(i+1);
+  }
+
+  AD<double>  slope = polyeval_AD(coeff_derivative,x);
+  return slope;
+}
+
 // TODO: Set the timestep length and duration
 size_t N = 60;
 double dt = 0.05;
@@ -26,7 +45,7 @@ const double Lf = 2.67;
 // Reference velocity.
 const double v_ref = 50.0;
 
-size_t x_start = 1;
+size_t x_start = 0;
 size_t y_start = x_start + N;
 size_t psi_start = y_start + N;
 size_t v_start = psi_start + N;
@@ -65,6 +84,8 @@ class FG_eval {
       fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
+    cout << "WORKING!" << endl;
+
     // Set initial constraints.
     fg[1 + x_start] = vars[x_start];
     fg[1 + y_start] = vars[y_start];
@@ -77,6 +98,7 @@ class FG_eval {
     // The constraints are calculated as the difference between the predicted 
     // and 
     for (size_t t = 1; t < N; t++) {
+
       // The state at time t+1 .
       AD<double> x1 = vars[x_start + t];
       AD<double> y1 = vars[y_start + t];
@@ -96,20 +118,16 @@ class FG_eval {
       // Only consider the actuation at time t.
       AD<double> delta0 = vars[delta_start + t - 1];
       AD<double> a0 = vars[a_start + t - 1];
-
-      AD<double> f0 = polyeval(coeffs,CppAD::Value(x0));
-
-      AD<double> psides0 = CppAD::atan(find_slope(coeffs,CppAD::Value(x0)));
+      AD<double> f0 = polyeval_AD(coeffs,x0);
+      AD<double> psides0 = CppAD::atan(find_slope_AD(coeffs,x0));
 
 
-      fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
-      fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-      fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 / Lf * dt);
-      fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
-      fg[1 + cte_start + t] =
-          cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
-      fg[1 + epsi_start + t] =
-          epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
+      fg[1 + x_start + t]    = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
+      fg[1 + y_start + t]    = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
+      fg[1 + psi_start + t]  = psi1 - (psi0 + v0 * delta0 / Lf * dt);
+      fg[1 + v_start + t]    = v1 - (v0 + a0 * dt);
+      fg[1 + cte_start + t]  = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
+      fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
     }
   }
 };
@@ -153,7 +171,6 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   vars[v_start] = v;
   vars[cte_start] = cte;
   vars[epsi_start] = epsi;
-
 
   //Define upper and lower limits for all variables.
 
