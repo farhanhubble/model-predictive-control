@@ -26,7 +26,7 @@ AD<double>  find_slope_AD(Eigen::VectorXd curve, AD<double>  x){
 }
 
 // TODO: Set the timestep length and duration
-size_t N = 20;
+size_t N = 15;
 double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
@@ -69,7 +69,7 @@ class FG_eval {
     for (size_t t = 0; t < N; t++) {
       fg[0] += 20*CppAD::pow(vars[cte_start + t], 2);
       fg[0] += 20*CppAD::pow(vars[epsi_start + t], 2);
-      fg[0] += 5*CppAD::pow(vars[v_start + t] - v_ref, 2);
+      fg[0] += 10*CppAD::pow(vars[v_start + t] - v_ref, 2);
     }
 
     // Penalize the use of actuators.
