@@ -46,7 +46,7 @@ int main() {
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
     string sdata = string(data).substr(0, length);
-    cout << sdata << endl;
+    //cout << sdata << endl;
     if (sdata.size() > 2 && sdata[0] == '4' && sdata[1] == '2') {
       string s = hasData(sdata);
       if (s != "") {
@@ -71,6 +71,10 @@ int main() {
           // Fit a polynomial to the waypoints.
           Eigen::VectorXd xs(ptsx.size());
           Eigen::VectorXd ys(ptsy.size());
+          for(size_t i=0; i<ptsx.size(); i++){
+            xs(i) = ptsx[i];
+            ys(i) = ptsy[i];
+          }
           Eigen::VectorXd reference_curve = polyfit(xs,ys,3);
 
           // Find current cross track error CTE. 
@@ -82,13 +86,16 @@ int main() {
           // using x = 0 all but the constant term in the quadratic are zero.
           double psi_err = psi - atan(find_slope(reference_curve,px));
 
+          cout << "cte= " << ct_err << " psi_err= " << psi_err << " ";
 
           Eigen::VectorXd state(6);
           state << px, py, psi, v, ct_err, psi_err;
           auto vars = mpc.Solve(state,reference_curve);
           
-          double steer_value =  vars[0];
+          double steer_value =  -1*vars[0];
           double throttle_value = vars[1];
+
+          cout << "steer_value= " << steer_value << " throttle= " << throttle_value << endl <<endl;
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -118,7 +125,7 @@ int main() {
 
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          //std::cout << msg << std::endl;
           // Latency
           // The purpose is to mimic real driving conditions where
           // the car does actuate the commands instantly.
@@ -128,7 +135,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          //this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {

@@ -43,7 +43,7 @@ const double Lf = 2.67;
 
 
 // Reference velocity.
-const double v_ref = 50.0;
+const double v_ref = 20.0;
 
 size_t x_start = 0;
 size_t y_start = x_start + N;
@@ -67,24 +67,22 @@ class FG_eval {
     
     // Add deviation from reference state to cost.
     for (size_t t = 0; t < N; t++) {
-      fg[0] += CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += 10*CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 10*CppAD::pow(vars[epsi_start + t], 2);
       fg[0] += CppAD::pow(vars[v_start + t] - v_ref, 2);
     }
 
     // Penalize the use of actuators.
     for (size_t t = 0; t < N - 1; t++) {
-      fg[0] += CppAD::pow(vars[delta_start + t], 2);
-      fg[0] += CppAD::pow(vars[a_start + t], 2);
+      fg[0] += 1000*CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 1000*CppAD::pow(vars[a_start + t], 2);
     }
 
     // Penalize sudden changes in sequential actuations.
     for (size_t t = 0; t < N - 2; t++) {
-      fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      fg[0] += 10*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 10*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
-
-    cout << "WORKING!" << endl;
 
     // Set initial constraints.
     fg[1 + x_start] = vars[x_start];
@@ -252,11 +250,15 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // Cost
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
-
-  // TODO: Return the first actuator values. The variables can be accessed with
-  // `solution.x[i]`.
-  //
-  // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
-  // creates a 2 element double vector.
-  return {};
+  vector<double> ret;
+  
+    ret.push_back(solution.x[delta_start]);
+    ret.push_back(solution.x[a_start]);
+  
+    for (size_t i = 0; i < N-1; i++) {
+      ret.push_back(solution.x[1 + x_start + i ]);
+      ret.push_back(solution.x[1 + y_start + i ]);
+    }
+  
+  return ret;
 }
