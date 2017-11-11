@@ -4,7 +4,7 @@ Driving a car in a simulator using a predictive model based on the car's kinemat
 ---
 ![Driving car in isimulator](/res/mpc_small.gif)
 ## About 
-This repository contains the code for model predictive control project of Udacity's [Self-driving Car Nanodegree](https://in.udacity.com/course/self-driving-car-engineer-nanodegree--nd013). Model Predictive Control or [MPC](https://en.wikipedia.org/wiki/Model_predictive_control) casts the pronblem of controlling a system, in this case a car, as an optimization problem. The MPC algorithm takes as input a reference trajectory and a vehicle model and produces a set of control inputs, steering angle, brake, throttle etc., that minimize a cost function over a finite number of timesteps, called the horizon.
+This repository contains the code for model predictive control project of Udacity's [Self-driving Car Nanodegree](https://in.udacity.com/course/self-driving-car-engineer-nanodegree--nd013). Model Predictive Control or [MPC](https://en.wikipedia.org/wiki/Model_predictive_control) casts the problem of controlling a system, in this case a car, as an optimization problem. The MPC algorithm takes as input a reference trajectory and a vehicle model and produces a set of control inputs, steering angle, brake, throttle etc., that minimize a cost function over a finite number of timesteps, called the horizon.
 
 The input model used here is a kinematic model which contains parameters like speed, position, heading etc. A more comprehensive dynamic model would also include forces, like friction and centripetal force and the torques produced by these forces. Dynamic models are computationally heavy.
 
@@ -53,7 +53,7 @@ Afte the optimization is over, the values of the steering angle (**delta\_{t}**)
 
 
 ## Hyperparameter Tuning
-**N** and **dt**, as described above, are hyper parameters of the algorithm. The granularity of the MPC algorithm depends on these hyperparameters and in turn affects the stability and accuracy of the car's motion. These parameters depend to a large extent on the vehicles velocity and the latency (fixed at 100ms). For a reference velocity of 40m/s the values of N=15 and dt=0.1s were found using trial and error.
+**N** and **dt**, as described above, are hyper parameters of the algorithm. The granularity of the MPC algorithm depends on these hyperparameters and in turn affects the stability and accuracy of the car's motion. These parameters depend to a large extent on the vehicles velocity and the latency (fixed at 100ms). For a reference velocity of 40m/s the values of N=15 and dt=0.1s were found using trial and error. The initial values of N=60 and dt=0.05s produced oscillation and the car overshot the track several times for a reference velocity of just 20m/s. Later N=20 and dt=0.1 worked well at 20m/s but the car left the track at sharp turns becasue of predictions being too far ahead in future. So N was reduced to 15 while dt was maintained at 0.1, which translates to a 1.5s look ahead. 
 
 If **N**\***dt** is made too small, the prediction horizon shrinks close to the present time and optimal values of steeing angle and throttle become obsolete by the time they're calculated. If **N**\***dt** is very large the cost is based on predictions far ahead in the future and the values of steeering and throttle are not so relevant to current time and the computation time of the algorithm also increases.
 
