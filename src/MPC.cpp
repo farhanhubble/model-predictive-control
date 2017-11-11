@@ -9,7 +9,7 @@ using CppAD::AD;
 AD<double> polyeval_AD(Eigen::VectorXd coeffs, AD<double> x){
   AD<double> result = 0;
   for (int i = 0; i < coeffs.size(); i++) {
-    result += coeffs[i] * pow(x, i);
+    result += coeffs[i] * CppAD::pow(x, i);
   }
   return result;
 }
@@ -69,7 +69,7 @@ class FG_eval {
     for (size_t t = 0; t < N; t++) {
       fg[0] += 10*CppAD::pow(vars[cte_start + t], 2);
       fg[0] += 10*CppAD::pow(vars[epsi_start + t], 2);
-      fg[0] += CppAD::pow(vars[v_start + t] - v_ref, 2);
+      fg[0] += 5*CppAD::pow(vars[v_start + t] - v_ref, 2);
     }
 
     // Penalize the use of actuators.
@@ -80,8 +80,8 @@ class FG_eval {
 
     // Penalize sudden changes in sequential actuations.
     for (size_t t = 0; t < N - 2; t++) {
-      fg[0] += 10*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += 10*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      fg[0] += 500*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 500*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
     // Set initial constraints.
@@ -122,7 +122,7 @@ class FG_eval {
 
       fg[1 + x_start + t]    = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
       fg[1 + y_start + t]    = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-      fg[1 + psi_start + t]  = psi1 - (psi0 + v0 * delta0 / Lf * dt);
+      fg[1 + psi_start + t]  = psi1 + (psi0 + v0 * delta0 / Lf * dt);
       fg[1 + v_start + t]    = v1 - (v0 + a0 * dt);
       fg[1 + cte_start + t]  = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
       fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);

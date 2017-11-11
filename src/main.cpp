@@ -60,39 +60,58 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
-
-          /*
-          * TODO: Calculate steering angle and throttle using MPC.
-          *
-          * Both are in between [-1, 1].
-          *
-          */
+          double current_steering_angle = j[1]["steering_angle"];
+          double current_throttle = j[1]["throttle"];
           
-          // Fit a polynomial to the waypoints.
-          Eigen::VectorXd xs(ptsx.size());
-          Eigen::VectorXd ys(ptsy.size());
+
+          /********************************************************************
+          * Calculate steering angle and throttle using MPC.                  *
+          * Both are in between [-1, 1].                                      *
+          ********************************************************************/
+          
+          // Convert reference trajectory points to car's coordinate system.
+          // This will make life 10x-100x easier but it won't guarantee 
+          // that another Ariane5(https://around.com/ariane.html) will not happen.
+          Eigen::VectorXd ref_xs(ptsx.size());
+          Eigen::VectorXd ref_ys(ptsy.size());
           for(size_t i=0; i<ptsx.size(); i++){
-            xs(i) = ptsx[i];
-            ys(i) = ptsy[i];
-          }
-          Eigen::VectorXd reference_curve = polyfit(xs,ys,3);
+            ref_xs(i) = (ptsx[i] - px) * cos(-psi) - (ptsy[i] - py) * sin(-psi) ;
+            ref_ys(i) = (ptsx[i] - px) * sin(-psi) + (ptsy[i] - py) * cos(-psi) ;
+          }  
+          
+          // Fit a polynomial to the reference trajectory.
+          Eigen::VectorXd reference_curve = polyfit(ref_xs,ref_ys,3);
 
           // Find current cross track error CTE. 
-          double ct_err = polyeval(reference_curve,px) - py;
+          double ct_err = polyeval(reference_curve,0);
           
           // Find current heading error which is the difference of tangent 
-          // direction at current position and the current heading. The 
-          // tangent (derivative) to the reference trajectory is evaluated
-          // using x = 0 all but the constant term in the quadratic are zero.
-          double psi_err = psi - atan(find_slope(reference_curve,px));
-
+          // direction at current position and the current heading, which is
+          // 0 in the car's frame of reference.
+          double ref_heading = atan(find_slope(reference_curve,0));           
+          double psi_err = 0 - ref_heading;
+          
           cout << "cte= " << ct_err << " psi_err= " << psi_err << " ";
 
+          // Adjust for latency of 100 ms.
+          const double latency = 0.1;
+          const double Lf = 2.67;
+          const double x_adjusted = 0 + v*latency;
+          const double y_adjusted = 0;
+          const double psi_adjusted = 0 - v * current_steering_angle * latency / Lf;
+          const double v_adjusted = v + current_throttle * latency;
+          const double ct_err_adjusted = ct_err + v * sin(psi_err) * latency;
+          const double psi_err_adjusted = psi_err + psi_adjusted; 
+
+          // Fill up the state vector.
           Eigen::VectorXd state(6);
-          state << px, py, psi, v, ct_err, psi_err;
+          state << x_adjusted, y_adjusted, psi_adjusted, v_adjusted, ct_err_adjusted, psi_err_adjusted;
+
+          // Call the solver and get the steering angle, throttle that minimize the 
+          // the deviation from the reference state over the entire prediction horizon.
           auto vars = mpc.Solve(state,reference_curve);
           
-          double steer_value =  -1*vars[0];
+          double steer_value = vars[0]/deg2rad(25);
           double throttle_value = vars[1];
 
           cout << "steer_value= " << steer_value << " throttle= " << throttle_value << endl <<endl;
@@ -106,6 +125,10 @@ int main() {
           //Display the MPC predicted trajectory 
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
+          for(size_t i=2; i<vars.size(); i+=2){
+             mpc_x_vals.push_back(vars[i]);
+             mpc_y_vals.push_back(vars[i+1]);
+          }
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
@@ -135,7 +158,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          //this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {

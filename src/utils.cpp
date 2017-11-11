@@ -3,6 +3,9 @@
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "utils.h"
+#include <iostream>
+
+using namespace std;
 
 double polyeval(Eigen::VectorXd coeffs, double x) {
   double result = 0.0;
@@ -44,5 +47,6 @@ double find_slope(Eigen::VectorXd curve, double x){
   }
 
   double slope = polyeval(coeff_derivative,x);
+  //cout << curve << " " << x << " " << slope <<endl;
   return slope;
 }
