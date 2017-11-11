@@ -26,8 +26,8 @@ AD<double>  find_slope_AD(Eigen::VectorXd curve, AD<double>  x){
 }
 
 // TODO: Set the timestep length and duration
-size_t N = 60;
-double dt = 0.05;
+size_t N = 20;
+double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -43,7 +43,7 @@ const double Lf = 2.67;
 
 
 // Reference velocity.
-const double v_ref = 20.0;
+const double v_ref = 40.0;
 
 size_t x_start = 0;
 size_t y_start = x_start + N;
@@ -67,8 +67,8 @@ class FG_eval {
     
     // Add deviation from reference state to cost.
     for (size_t t = 0; t < N; t++) {
-      fg[0] += 10*CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += 10*CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += 20*CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 20*CppAD::pow(vars[epsi_start + t], 2);
       fg[0] += 5*CppAD::pow(vars[v_start + t] - v_ref, 2);
     }
 
@@ -122,7 +122,7 @@ class FG_eval {
 
       fg[1 + x_start + t]    = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
       fg[1 + y_start + t]    = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-      fg[1 + psi_start + t]  = psi1 + (psi0 + v0 * delta0 / Lf * dt);
+      fg[1 + psi_start + t]  = psi1 - (psi0 + v0 * delta0 / Lf * dt);
       fg[1 + v_start + t]    = v1 - (v0 + a0 * dt);
       fg[1 + cte_start + t]  = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
       fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);

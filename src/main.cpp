@@ -9,6 +9,7 @@
 #include "json.hpp"
 #include "utils.h"
 
+#define MPH2MPS 0.44704
 // for convenience
 using json = nlohmann::json;
 
@@ -59,7 +60,7 @@ int main() {
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
-          double v = j[1]["speed"];
+          double v = j[1]["speed"]; v *= MPH2MPS ; 
           double current_steering_angle = j[1]["steering_angle"];
           double current_throttle = j[1]["throttle"];
           
@@ -111,7 +112,7 @@ int main() {
           // the deviation from the reference state over the entire prediction horizon.
           auto vars = mpc.Solve(state,reference_curve);
           
-          double steer_value = vars[0]/deg2rad(25);
+          double steer_value = -vars[0]/deg2rad(25);
           double throttle_value = vars[1];
 
           cout << "steer_value= " << steer_value << " throttle= " << throttle_value << endl <<endl;
@@ -140,8 +141,10 @@ int main() {
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
-          //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
-          // the points in the simulator are connected by a Yellow line
+          for(int i=0; i<ref_xs.size(); i++){
+            next_x_vals.push_back(ref_xs(i));
+            next_y_vals.push_back(ref_ys(i));
+          }
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
